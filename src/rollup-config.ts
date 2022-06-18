@@ -1,4 +1,3 @@
-
 import type { JsMinifyOptions } from "@swc/core"
 import type { PackageMetadata, BuncheeRollupConfig, CliArgs, BundleOptions } from "./types";
 
@@ -15,9 +14,7 @@ import { logger } from "./utils"
 
 const { Module } = require("module");
 const minifyOptions: JsMinifyOptions = {
-  compress: {
-    unused: true,
-  },
+  compress: true,
   format: {
     comments: 'some',
     wrapFuncArgs: false,
