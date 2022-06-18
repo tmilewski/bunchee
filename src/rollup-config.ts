@@ -1,10 +1,13 @@
+
 import type { PackageMetadata, BuncheeRollupConfig, CliArgs, BundleOptions } from "./types";
-import fs, { existsSync } from "fs";
+
+import fs from "fs";
 import { resolve, extname, dirname, basename } from "path";
+import { swc } from 'rollup-plugin-swc3';
 import commonjs from "@rollup/plugin-commonjs";
 import shebang from "rollup-plugin-preserve-shebang";
 import json from "@rollup/plugin-json";
-import babel from "@rollup/plugin-babel";
+// import babel from "@rollup/plugin-babel";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { InputOptions, OutputOptions, Plugin } from "rollup";
 import { terser } from "rollup-plugin-terser";
@@ -44,8 +47,8 @@ function createInputConfig(
     .reduce((a: string[], b: string[]) => a.concat(b), [] as string[]);
 
   const {useTypescript, target, minify = false} = options;
-  const typings: string | undefined = pkg.types || pkg.typings
-  const cwd: string = config.rootDir
+  // const typings: string | undefined = pkg.types || pkg.typings
+  // const cwd: string = config.rootDir
 
   const plugins: (Plugin)[] = [
     nodeResolve({
@@ -57,33 +60,48 @@ function createInputConfig(
     }),
     json(),
     shebang(),
-    useTypescript && require("@rollup/plugin-typescript")({
-      tsconfig: (() => {
-        const tsconfig = resolve(cwd, "tsconfig.json");
-        return existsSync(tsconfig) ? tsconfig : undefined;
-      })(),
-      typescript: resolveTypescript(),
-      // override options
-      jsx: "react",
-      module: "ES6",
-      target: "ES5",
-      // Disable `noEmitOnError` for watch mode to avoid plugin error
-      noEmitOnError: !options.watch,
-      sourceMap: options.sourcemap,
-      declaration: !!typings,
-      ...(!!typings && {
-        declarationDir: dirname(resolve(cwd, typings)),
-      }),
+    swc({
+      // All options are optional
+      include: /\.[jt]sx?$/, // default
+      exclude: 'node_modules', // default
+      tsconfig: 'tsconfig.json', // default
+      // And add your swc configuration here!
+      // "filename" will be ignored since it is handled by rollup
+      jsc: {
+        externalHelpers: false,
+        parser: {
+          syntax: useTypescript ? 'typescript' : 'ecmascript',
+          [useTypescript ? 'tsx': 'jsx']: true,
+        }
+      }
     }),
-    !useTypescript && babel({
-      babelHelpers: "bundled",
-      babelrc: false,
-      configFile: false,
-      exclude: "node_modules/**",
-      presets: [
-        ["babel-preset-o", { targets: {} }]
-      ],
-    }),
+    // useTypescript && require("@rollup/plugin-typescript")({
+    //   tsconfig: (() => {
+    //     const tsconfig = resolve(cwd, "tsconfig.json");
+    //     return existsSync(tsconfig) ? tsconfig : undefined;
+    //   })(),
+    //   typescript: resolveTypescript(),
+    //   // override options
+    //   jsx: "react",
+    //   module: "ES6",
+    //   target: "ES5",
+    //   // Disable `noEmitOnError` for watch mode to avoid plugin error
+    //   noEmitOnError: !options.watch,
+    //   sourceMap: options.sourcemap,
+    //   declaration: !!typings,
+    //   ...(!!typings && {
+    //     declarationDir: dirname(resolve(cwd, typings)),
+    //   }),
+    // }),
+    // !useTypescript && babel({
+    //   babelHelpers: "bundled",
+    //   babelrc: false,
+    //   configFile: false,
+    //   exclude: "node_modules/**",
+    //   presets: [
+    //     ["babel-preset-o", { targets: {} }]
+    //   ],
+    // }),
     minify && terser({
       compress: {
         "keep_infinity": true,
