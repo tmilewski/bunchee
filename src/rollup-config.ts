@@ -1,4 +1,5 @@
 
+import type { JsMinifyOptions } from "@swc/core"
 import type { PackageMetadata, BuncheeRollupConfig, CliArgs, BundleOptions } from "./types";
 
 import fs from "fs";
@@ -7,14 +8,23 @@ import { swc } from 'rollup-plugin-swc3';
 import commonjs from "@rollup/plugin-commonjs";
 import shebang from "rollup-plugin-preserve-shebang";
 import json from "@rollup/plugin-json";
-// import babel from "@rollup/plugin-babel";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import { InputOptions, OutputOptions, Plugin } from "rollup";
-import { terser } from "rollup-plugin-terser";
 import config from "./config";
 import { logger } from "./utils"
 
 const { Module } = require("module");
+const minifyOptions: JsMinifyOptions = {
+  compress: {
+    unused: true,
+  },
+  format: {
+    comments: 'some',
+    wrapFuncArgs: false,
+    preserveAnnotations: true,
+  },
+  mangle: true
+}
 
 let hasLoggedTsWarning = false
 function resolveTypescript() {
@@ -62,9 +72,9 @@ function createInputConfig(
     shebang(),
     swc({
       // All options are optional
-      include: /\.[jt]sx?$/, // default
-      exclude: 'node_modules', // default
-      tsconfig: 'tsconfig.json', // default
+      include: /\.(m|c)?[jt]sx?$/,
+      exclude: 'node_modules',
+      tsconfig: 'tsconfig.json',
       // And add your swc configuration here!
       // "filename" will be ignored since it is handled by rollup
       jsc: {
@@ -72,45 +82,15 @@ function createInputConfig(
         parser: {
           syntax: useTypescript ? 'typescript' : 'ecmascript',
           [useTypescript ? 'tsx': 'jsx']: true,
-        }
-      }
-    }),
-    // useTypescript && require("@rollup/plugin-typescript")({
-    //   tsconfig: (() => {
-    //     const tsconfig = resolve(cwd, "tsconfig.json");
-    //     return existsSync(tsconfig) ? tsconfig : undefined;
-    //   })(),
-    //   typescript: resolveTypescript(),
-    //   // override options
-    //   jsx: "react",
-    //   module: "ES6",
-    //   target: "ES5",
-    //   // Disable `noEmitOnError` for watch mode to avoid plugin error
-    //   noEmitOnError: !options.watch,
-    //   sourceMap: options.sourcemap,
-    //   declaration: !!typings,
-    //   ...(!!typings && {
-    //     declarationDir: dirname(resolve(cwd, typings)),
-    //   }),
-    // }),
-    // !useTypescript && babel({
-    //   babelHelpers: "bundled",
-    //   babelrc: false,
-    //   configFile: false,
-    //   exclude: "node_modules/**",
-    //   presets: [
-    //     ["babel-preset-o", { targets: {} }]
-    //   ],
-    // }),
-    minify && terser({
-      compress: {
-        "keep_infinity": true,
+          privateMethod: true,
+          classPrivateProperty: true,
+          exportDefaultFrom: true,
+        },
+        ...(minify && { minify: minifyOptions })
       },
-      format: {
-        "comments": /^\s*([@#]__[A-Z]__\s*$|@[a-zA-Z]\s*$)/,
-        "wrap_func_args": false,
-        "preserve_annotations": true,
-      }
+      sourceMaps: options.sourcemap,
+      inlineSourcesContent: false,
+
     }),
   ].filter((n: (Plugin | false)): n is Plugin => Boolean(n));
 
